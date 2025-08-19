@@ -3,40 +3,55 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { authService } from '@/lib/auth';
+import type { SignupData } from '@/lib/auth';
 
 export default function Index() {
+  const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<'admin' | 'salesmember' | 'salesmanager'>('salesmember');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
     const navigate = useNavigate();
 
   const handleSignIn = (e: React.FormEvent) => {
       e.preventDefault();
-      // Demo accounts
-      const demoAccounts = [
-        { email: 'admin@company.com', password: 'password123', role: 'admin' },
-        { email: 'alice@company.com', password: 'password123', role: 'sales' },
-        { email: 'bob@company.com', password: 'password123', role: 'sales' },
-      ];
+      handleAuth();
+  };
 
-      const user = demoAccounts.find(
-        (acc) => acc.email === email && acc.password === password
-      );
+  const handleAuth = async () => {
+    setLoading(true);
+    setError('');
 
+    try {
+      if (isSignup) {
+        const signupData: SignupData = { name, email, password, role };
+        await authService.signup(signupData);
+      } else {
+        await authService.login({ email, password });
+      }
+
+      const user = authService.getUser();
       if (user) {
         if (user.role === 'admin') {
           navigate('/admindashboard');
         } else {
-          // Pass user info to dashboard via state
           navigate('/dashboard', { state: { user } });
         }
-      } else {
-        alert('Invalid credentials.');
       }
+    } catch (error: any) {
+      setError(error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const useDemoAccount = (demoEmail: string, demoPassword: string) => {
     setEmail(demoEmail);
     setPassword(demoPassword);
+    setIsSignup(false);
   };
 
   return (
@@ -109,12 +124,169 @@ export default function Index() {
         <div className="w-full max-w-md">
           {/* Welcome Back Header */}
           <div className="text-center mb-6 lg:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-sm sm:text-base text-gray-600">Sign in to your CRM account to continue</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+              {isSignup ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600">
+              {isSignup ? 'Create your CRM account to get started' : 'Sign in to your CRM account to continue'}
+            </p>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSignIn} className="space-y-4 lg:space-y-6">
+          {/* Auth Form */}
+          <form onSubmit={handleSignIn} className="space-y-4 lg:space-y-5">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+            
+            {isSignup && (
+              <div>
+                <Label htmlFor="name" className="text-sm font-medium text-gray-700 mb-2 block">Full Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full"
+                  placeholder="Enter your full name"
+                />
+              </div>
+            )}
+            
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-2 block">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full"
+                placeholder="Enter your email"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700 mb-2 block">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full"
+                placeholder="Enter your password"
+                minLength={6}
+              />
+            </div>
+            
+            {isSignup && (
+              <div>
+                <Label htmlFor="role" className="text-sm font-medium text-gray-700 mb-2 block">Role</Label>
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as 'admin' | 'salesmember' | 'salesmanager')}
+                  className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-navy-dark focus:border-transparent"
+                  required
+                >
+                  <option value="salesmember">Sales Member</option>
+                  <option value="salesmanager">Sales Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
+            
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 lg:h-12 bg-navy-dark hover:bg-navy-light text-white font-medium rounded-lg transition-colors text-sm lg:text-base disabled:opacity-50"
+            >
+              {loading ? 'Please wait...' : (isSignup ? 'Create Account' : 'Sign In')}
+            </Button>
+          </form>
+
+          {/* Toggle between Sign In and Sign Up */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup(!isSignup);
+                setError('');
+                setName('');
+                setEmail('');
+                setPassword('');
+                setRole('salesmember');
+              }}
+              className="text-sm text-navy-dark hover:text-navy-light font-medium"
+            >
+              {isSignup ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+            </button>
+          </div>
+
+          {/* Demo Accounts Section - Only show when not in signup mode */}
+          {!isSignup && (
+            <div className="mt-8 lg:mt-12">
+              <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-2">Demo Accounts</h3>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 lg:mb-6">
+                Use these credentials to test different user roles
+              </p>
+
+              <div className="space-y-3 lg:space-y-4">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 text-sm lg:text-base">Admin</div>
+                    <div className="text-xs lg:text-sm text-gray-600 truncate">admin@company.com</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => useDemoAccount('admin@company.com', 'password123')}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100 ml-3 text-xs lg:text-sm px-3 lg:px-4"
+                  >
+                    Use
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 text-sm lg:text-base">Sales Member</div>
+                    <div className="text-xs lg:text-sm text-gray-600 truncate">alice@company.com</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => useDemoAccount('alice@company.com', 'password123')}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100 ml-3 text-xs lg:text-sm px-3 lg:px-4"
+                  >
+                    Use
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 text-sm lg:text-base">Sales Member</div>
+                    <div className="text-xs lg:text-sm text-gray-600 truncate">bob@company.com</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => useDemoAccount('bob@company.com', 'password123')}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100 ml-3 text-xs lg:text-sm px-3 lg:text-sm px-3 lg:px-4"
+                  >
+                    Use
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
             <Input
               id="email"
               type="email"

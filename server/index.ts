@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import Dashboard from "../backend/models/Dashboard.js";
 import leadsRouter from "../backend/routes/leads.js";
+import authRouter from "./routes/auth.js";
 import { handleDemo } from "../crm-project/backend/routes/demo";
 import { handleLogin } from "../crm-project/backend/routes/login.js";
 
@@ -31,6 +32,7 @@ export function createServer() {
 
   app.get("/api/demo", handleDemo);
   app.use("/api/leads", leadsRouter);
+  app.use("/api/auth", authRouter);
 
   // Login API route
   app.post("/api/login", handleLogin);
